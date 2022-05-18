@@ -91,63 +91,6 @@ def codeGitCheckout () {
 }
 
 
-def webAppBuild(String projectName){
-	def versionNumber = ""
-	def releaseArgs = ""
-	try {
-		dir ("code") {
-			sh '''
-				mkdir -p tmp
-				PACKAGE_VERSION=$(node -p -e "require('./package.json').version")
-				BUILD_VERSION=${PACKAGE_VERSION%%-*}.${BUILD_NUMBER}
-				echo PACKAGE_VERSION=${PACKAGE_VERSION} > tmp/versions.props
-				echo BUILD_VERSION=${BUILD_VERSION} >> tmp/versions.props
-			'''
-			def props = readProperties file: "tmp/versions.props"
-			def packageVersion = props["PACKAGE_VERSION"]
-			versionNumber = props["BUILD_VERSION"]
-		
-			sh '''
-				rm -rf www
-				npm i
-				npm run build-prod
-			'''
-		}
-		dir ('code/') {
-			withEnv(["PROJECT=${projectName}","VERSION=${versionNumber}"]) {
-	      sh 'tar -cvf "${PROJECT}"-"${VERSION}".tar www'
-      }
-			stash includes: "${projectName}-${versionNumber}.tar", name: "${projectName}-${versionNumber}"
-		}
-		currentBuild.result = "SUCCESS"
-	} catch (err) {
-		currentBuild.result = "FAILURE"
-		throw err
-	}
-	return versionNumber
-}
-
-/*
- *  Deploy the web application
- *
- */
-def deployWebAppManual (String projectName, String versionNumber, String testMailList){
-	try {
-		dir ('code/deploy') {
-			withEnv(["JENKINS_NODE_COOKIE=dontKillMe", "PROJECT=${projectName}","BRANCH=${env.BRANCH_NAME}", "VERSION=${versionNumber}"]) {
-				sh 'mkdir -p scratch'
-				unstashDeployables projectName, "scratch", "config", versionNumber
-				sh './deploy.sh "${PROJECT}" "${VERSION}" "${BRANCH}"'
-			}
-		}
-		currentBuild.result = "SUCCESS"
-	} catch (err) {
-		currentBuild.result = "FAILURE"
-		throw err
-	}
-
-}
-
 def buildDockerImage(){
 	try{
 		dir ("code") {
