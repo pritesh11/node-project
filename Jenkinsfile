@@ -120,7 +120,7 @@ def pushDockerImageOnHub(){
 
 }
 
-def pushDockerImageOnHub(){
+def launchK8SResouces(){
         try{
                 dir ("code/kubernetes") {
                         sh '''
